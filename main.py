@@ -6,6 +6,7 @@ from PIL import ImageTk
 import numpy as np
 import csv
 import time
+import datetime
 import random
 import compute
 
@@ -237,6 +238,25 @@ class ImagePerso:
                 self.j -= 1
                 self.i += 1
 
+    def go_to_step(self, n):
+        for i in range(n):
+            if self.Mod[0] % 5 == 0:
+                self.Mod[0] = self.Mod[0] / 5
+            elif self.Mod[0] % 3 == 0:
+                self.Mod[0] = self.Mod[0] / 3
+            elif self.Mod[0] % 2 == 0:
+                self.Mod[0] = self.Mod[0] / 2
+
+            if self.Mod[1] % 5 == 0:
+                self.Mod[1] = self.Mod[1] / 5
+            elif self.Mod[1] % 3 == 0:
+                self.Mod[1] = self.Mod[1] / 3
+            elif self.Mod[1] % 2 == 0:
+                self.Mod[1] = self.Mod[1] / 2
+
+            self.next_qs()
+
+
 """
 def update_image():
     global X
@@ -281,16 +301,19 @@ def update_image_2():
         rectangle_position, color = imp.next_rectangle()
         ImageDraw.Draw(im).rectangle(rectangle_position, color)"""
 
-syst = compute.System(0.9, [30, np.pi / 2, 0], [np.pi / 3, np.pi / 3], [720, 720], "Images/Hello_there.png", "Images/eso0932a.tif")
+syst = compute.System(0.99999, [30, np.pi / 4, 0], [np.pi / 3, np.pi / 3], [1080, 1080], "Images/Hello_there.png", "Images/background.png")
 syst.create_image("Images/Hello_there.png")
 
 window = tk.Tk()
 window.title("Hello there")
-im = Image.open("Images/Hello_there.png")
+#im = Image.open("Images/Hello_there.png")
+im = Image.open("Out/2022-03-23--17-39-00.png")
 imtk = ImageTk.PhotoImage(im)
 label = tk.Label(window, image=imtk)
 label.pack()
-imp = ImagePerso(window, "Images/Hello_there.png", syst)
+#imp = ImagePerso(window, "Images/Hello_there.png", syst)
+imp = ImagePerso(window, "Out/2022-03-23--17-39-00.png", syst)
+imp.go_to_step(7)
 
 
 def update_image_3():
@@ -298,10 +321,15 @@ def update_image_3():
     imtk = ImageTk.PhotoImage(im)
     label.configure(image=imtk)
     label.image = imtk
-    label.after(100, update_image_3)
-    for i in range(6):
+    if imp.i == imp.size[0] - 1 and imp.j == imp.size[1] - 1:
+        im.save("Out/" + datetime.datetime.now().strftime("%Y-%m-%d--%H-%M-%S") + ".png")
+        return 0
+    elif imp.i == imp.qx - 1 and imp.j == imp.qy - 1 and not imp.qx == 1:
+        im.save("Out/" + datetime.datetime.now().strftime("%Y-%m-%d--%H-%M-%S")+".png")
+    for i in range(1):
         rectangle_position, color = imp.next_rectangle()
         ImageDraw.Draw(im).rectangle(rectangle_position, color)
+    label.after(1, update_image_3)
 
 
 window.after(100, update_image_3)

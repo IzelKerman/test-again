@@ -14,6 +14,13 @@ def cot(x):
     return 1 / np.tan(x)
 
 
+def inside_event_horizon(t, y):
+    r = y[0]
+    a = y[5]
+    return r - 1 - np.sqrt(1 - a ** 2)
+inside_event_horizon.Terminal = True
+
+
 def g(r, theta, a):
     rho = np.sqrt(r ** 2 + (a * np.cos(theta)) ** 2)
     Delta = r ** 2 - 2 * r + a ** 2
@@ -124,13 +131,16 @@ class System:
         p = - p / p[0]
         b = p[3]
         q = p[2] ** 2 + cot(self.x[1]) ** 2 * b ** 2 - self.a ** 2 * np.cos(self.x[1]) ** 2
-        sol = sc.solve_ivp(f_kerr, [0, -1000], [self.x[0], self.x[1], self.x[2], p[1], p[2], self.a, b, q])
+        sol = sc.solve_ivp(f_kerr, [0, -10000], [self.x[0], self.x[1], self.x[2], p[1], p[2], self.a, b, q], rtol=1e-9)
         """fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         X = [ell_to_cart(sol.y[0][i], sol.y[1][i], sol.y[2][i], self.a) for i, y_i in enumerate(sol.y[0])]
         x = [x_i[0] for x_i in X]
         y = [x_i[1] for x_i in X]
         z = [x_i[2] for x_i in X]
+        ax.set_xlim3d(-50, 50)
+        ax.set_ylim3d(-50, 50)
+        ax.set_zlim3d(-50, 50)
         ax.plot(x, y, z)
         plt.show()"""
 
@@ -141,10 +151,12 @@ class System:
             #theta = sol.y[1][-1] % (np.pi)  # ici c'est faux
             if sol.y[1][-1] % (2 * np.pi) <= np.pi:
                 theta = sol.y[1][-1] % np.pi
-                phi = sol.y[2][-1] % (2 * np.pi)
+                #phi = sol.y[2][-1] % (2 * np.pi)
+                phi = (np.pi - sol.y[2][-1]) % (2 * np.pi)
             else:
                 theta = (2 * np.pi - sol.y[1][-1]) % np.pi
-                phi = (sol.y[2][-1] + np.pi) % (2 * np.pi)
+                #phi = (sol.y[2][-1] + np.pi) % (2 * np.pi)
+                phi = (-sol.y[2][-1]) % (2 * np.pi)
             phi = sol.y[2][-1] % (2 * np.pi)
             if phi > np.pi:
                 phi = phi - 2 * np.pi
@@ -154,6 +166,7 @@ class System:
                 return self.back_pixels[I, J]
             except:
                 print("FUCK", I, J)
+            #tout est décallé parce que je suis trop con ptn de bordel de merde
 
 
 if __name__ == "__main__":
