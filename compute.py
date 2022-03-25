@@ -17,8 +17,8 @@ def cot(x):
 def inside_event_horizon(t, y):
     r = y[0]
     a = y[5]
-    return r - 1 - np.sqrt(1 - a ** 2)
-inside_event_horizon.Terminal = True
+    return r - 1 - np.sqrt(1 - a ** 2 * np.cos(y[1]) ** 2)
+inside_event_horizon.terminal = True
 
 
 def g(r, theta, a):
@@ -77,7 +77,8 @@ def f_kerr(t, x):
     dr = Delta * p_r / rho ** 2
     dtheta = p_theta / rho ** 2
     #dphi = (a * P / Delta + (b - a) + b * cot(theta) ** 2) / rho ** 2
-    dphi = ((a - 2 * b) * P / Delta + b * (1 + cot(theta) ** 2) - a) / rho ** 2
+    #dphi = ((a - 2 * b) * P / Delta + b * (1 + cot(theta) ** 2) - a) / rho ** 2
+    dphi = (a * P / Delta + b * (1 + cot(theta) ** 2) - a) / rho ** 2
     truc = Delta * p_r ** 2 + p_theta ** 2 - R / Delta - Theta
     dp_r = (truc * drho_r / rho - (p_r ** 2 + R / Delta ** 2) * dDelta_r / 2 + dR_r / (2 * Delta)) / rho ** 2
     dp_theta = (truc * drho_theta / rho + dTheta_theta / 2) / rho ** 2
@@ -126,21 +127,21 @@ class System:
         #Gamma = - np.sqrt(G[3]) * n[2] * (G[0] + 1) / (2 * G[4])
         #Gamma = (- G[4] * n[2] + np.sqrt(G[4] ** 2 * n[2] ** 2 - G[0] * G[3])) / np.sqrt(G[3])
         #p = np.array([1, Gamma * n[0], - Gamma * n[2], Gamma * n[1]])
-        p = np.array([1, n[0] / np.sqrt(G[1]), -n[2] / np.sqrt(G[2]), n[1] / np.sqrt(G[3]) - G[4] / G[3]])
+        p = np.array([1, n[0] / np.sqrt(G[1]), -n[2] / np.sqrt(G[2]), - (n[1] / np.sqrt(G[3]) - G[4] / G[3])])
         p = flat(self.x[0], self.x[1], p, G)
         p = - p / p[0]
         b = p[3]
         q = p[2] ** 2 + cot(self.x[1]) ** 2 * b ** 2 - self.a ** 2 * np.cos(self.x[1]) ** 2
-        sol = sc.solve_ivp(f_kerr, [0, -10000], [self.x[0], self.x[1], self.x[2], p[1], p[2], self.a, b, q], rtol=1e-9)
+        sol = sc.solve_ivp(f_kerr, [0, -10000], [self.x[0], self.x[1], self.x[2], p[1], p[2], self.a, b, q], rtol=1e-9, events=inside_event_horizon)
         """fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         X = [ell_to_cart(sol.y[0][i], sol.y[1][i], sol.y[2][i], self.a) for i, y_i in enumerate(sol.y[0])]
         x = [x_i[0] for x_i in X]
         y = [x_i[1] for x_i in X]
         z = [x_i[2] for x_i in X]
-        ax.set_xlim3d(-50, 50)
-        ax.set_ylim3d(-50, 50)
-        ax.set_zlim3d(-50, 50)
+        ax.set_xlim3d(-10, 10)
+        ax.set_ylim3d(-10, 10)
+        ax.set_zlim3d(-10, 10)
         ax.plot(x, y, z)
         plt.show()"""
 
@@ -153,11 +154,12 @@ class System:
                 theta = sol.y[1][-1] % np.pi
                 #phi = sol.y[2][-1] % (2 * np.pi)
                 phi = (np.pi - sol.y[2][-1]) % (2 * np.pi)
+                #phi = sol.y[2][-1] % (2 * np.pi)
             else:
                 theta = (2 * np.pi - sol.y[1][-1]) % np.pi
                 #phi = (sol.y[2][-1] + np.pi) % (2 * np.pi)
                 phi = (-sol.y[2][-1]) % (2 * np.pi)
-            phi = sol.y[2][-1] % (2 * np.pi)
+                #phi = (sol.y[2][-1] + np.pi) % (2 * np.pi)
             if phi > np.pi:
                 phi = phi - 2 * np.pi
             I = np.floor((phi + np.pi) * self.background_size[0] / (2 * np.pi))
