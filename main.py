@@ -301,19 +301,19 @@ def update_image_2():
         rectangle_position, color = imp.next_rectangle()
         ImageDraw.Draw(im).rectangle(rectangle_position, color)"""
 
-syst = compute.System(0.99999, [30, np.pi / 2, 0], [np.pi / 3, np.pi / 3], [1080, 1080], "Images/Hello_there.png", "Images/eso0932a.tif")
+syst = compute.System(0.99999, [30, np.pi / 2.5, 0], [np.pi / 4, np.pi / 4], [1080, 1080], "Images/Hello_there.png", "Images/eso0932a.tif")
 syst.create_image("Images/Hello_there.png")
 
 window = tk.Tk()
 window.title("Hello there")
-#im = Image.open("Images/Hello_there.png")
-im = Image.open("Out/2022-03-24--19-01-05.png")
+im = Image.open("Images/Hello_there.png")
+#im = Image.open("Out/2022-03-24--19-01-05.png")
 imtk = ImageTk.PhotoImage(im)
 label = tk.Label(window, image=imtk)
 label.pack()
-#imp = ImagePerso(window, "Images/Hello_there.png", syst)
-imp = ImagePerso(window, "Out/2022-03-24--19-01-05.png", syst)
-imp.go_to_step(6)
+imp = ImagePerso(window, "Images/Hello_there.png", syst)
+#imp = ImagePerso(window, "Out/2022-03-24--19-01-05.png", syst)
+#imp.go_to_step(6)
 
 
 def update_image_3():
@@ -331,7 +331,7 @@ def update_image_3():
         ImageDraw.Draw(im).rectangle(rectangle_position, color)
     label.after(1, update_image_3)
 
-
+print("hello")
 window.after(100, update_image_3)
 window.mainloop()
 

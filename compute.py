@@ -3,11 +3,28 @@ import scipy.integrate as sc
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from PIL import Image
+import colorsys
 
+r_min = 2
+r_max = 10
 
 def ell_to_cart(r, theta, phi, a=1):
     rho = np.sqrt(r ** 2 + a ** 2)
     return rho * np.sin(theta) * np.cos(phi), rho * np.sin(theta) * np.sin(phi), r * np.cos(theta)
+
+
+def theta_phi_chiant(y):
+    if y[1] % (2 * np.pi) <= np.pi:
+        theta = y[1] % np.pi
+        # phi = sol.y[2][-1] % (2 * np.pi)
+        phi = (np.pi - y[2]) % (2 * np.pi)
+        # phi = sol.y[2][-1] % (2 * np.pi)
+    else:
+        theta = (2 * np.pi - y[1]) % np.pi
+        # phi = (sol.y[2][-1] + np.pi) % (2 * np.pi)
+        phi = (-y[2]) % (2 * np.pi)
+        # phi = (sol.y[2][-1] + np.pi) % (2 * np.pi)
+    return theta, phi
 
 
 def cot(x):
@@ -19,6 +36,27 @@ def inside_event_horizon(t, y):
     a = y[5]
     return r - 1 - np.sqrt(1 - a ** 2 * np.cos(y[1]) ** 2)
 inside_event_horizon.terminal = True
+
+
+def on_the_ring(t, y):
+    r = y[0]
+    a = y[5]
+    theta = y[1]
+    return (r - 1 - np.sqrt(1 - a ** 2 * np.cos(y[1]) ** 2)) * (abs(np.cos(theta)) + abs(max(r_min, r) - min(r_max, r)))
+    if r_min <= r <= r_max:
+        return (r - 1 - np.sqrt(1 - a ** 2 * np.cos(y[1]) ** 2)) * np.cos(theta)
+    else:
+        return r - 1 - np.sqrt(1 - a ** 2 * np.cos(y[1]) ** 2)
+on_the_ring.terminal = True
+
+
+def on_the_plane(t, y):
+    r = y[0]
+    a = y[5]
+    theta = y[1]
+    #return np.cos(theta)
+    return (r - 1 - np.sqrt(1 - a ** 2 * np.cos(y[1]) ** 2)) * np.cos(theta)
+#on_the_plane.terminal = True
 
 
 def g(r, theta, a):
@@ -113,7 +151,7 @@ class System:
         img = Image.new('RGB', (self.N_x, self.N_y), (0, 0, 0))
         img.save(image_name)
 
-    def compute_angle(self, i, j):
+    def compute_angle_past(self, i, j):
         n = np.array([1, self.L_x * (-1 + (2 * i + 1) / self.N_x), self.L_y * (-1 + (2 * j + 1) / self.N_y)])
         n = n / np.linalg.norm(n)   #composante de la direction spatiale (au signe près) dans la base ON e_r,...
         """theta = np.arctan2(np.sqrt(n[0] ** 2 + n[1] ** 2), -n[2])
@@ -132,25 +170,35 @@ class System:
         p = - p / p[0]
         b = p[3]
         q = p[2] ** 2 + cot(self.x[1]) ** 2 * b ** 2 - self.a ** 2 * np.cos(self.x[1]) ** 2
-        sol = sc.solve_ivp(f_kerr, [0, -10000], [self.x[0], self.x[1], self.x[2], p[1], p[2], self.a, b, q], rtol=1e-9, events=inside_event_horizon)
+        #sol = sc.solve_ivp(f_kerr, [0, -10000], [self.x[0], self.x[1], self.x[2], p[1], p[2], self.a, b, q], rtol=1e-9, events=inside_event_horizon)
+        #sol = sc.solve_ivp(f_kerr, [0, -10000], [self.x[0], self.x[1], self.x[2], p[1], p[2], self.a, b, q], rtol=1e-12, atol=1e-9, events=on_the_ring)
+        sol = sc.solve_ivp(f_kerr, [0, -10000], [self.x[0], self.x[1], self.x[2], p[1], p[2], self.a, b, q], rtol=1e-9, events=on_the_plane)
+        #while not(r_min < sol.y[0][-1] < r_max) and sol.t[-1] > -10000:
+            #sol = sc.solve_ivp(f_kerr, [sol.t[-1], sol.t[-1] - 2], [sol.y[i][-1] for i in range(len(sol.y))], rtol=1e-9)
+            #sol = sc.solve_ivp(f_kerr, [sol.t[-1], -10000], [sol.y[i][-1] for i in range(len(sol.y))], rtol=1e-9, events=on_the_ring)
+            #print(sol.t)
+        #print(sol.y_events)
         """fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         X = [ell_to_cart(sol.y[0][i], sol.y[1][i], sol.y[2][i], self.a) for i, y_i in enumerate(sol.y[0])]
         x = [x_i[0] for x_i in X]
         y = [x_i[1] for x_i in X]
         z = [x_i[2] for x_i in X]
-        ax.set_xlim3d(-10, 10)
-        ax.set_ylim3d(-10, 10)
-        ax.set_zlim3d(-10, 10)
+        ax.set_xlim3d(-15, 15)
+        ax.set_ylim3d(-15, 15)
+        ax.set_zlim3d(-15, 15)
         ax.plot(x, y, z)
+        o = np.linspace(0, 2 * np.pi, 100)
+        ax.plot(np.sqrt(r_min ** 2 + self.a ** 2) * np.cos(o), np.sqrt(r_min ** 2 + self.a ** 2) * np.sin(o), 0)
+        ax.plot(np.sqrt(r_max ** 2 + self.a ** 2) * np.cos(o), np.sqrt(r_max ** 2 + self.a ** 2) * np.sin(o), 0)
         plt.show()"""
 
-        if sol.y[0][-1] <= 1000:
+        if r_max < sol.y[0][-1] <= 1000 or sol.y[0][-1] < r_min:
             return (0, 0, 0)
         else:
             # on est loin donc ellipsoid approx cartésien
             #theta = sol.y[1][-1] % (np.pi)  # ici c'est faux
-            if sol.y[1][-1] % (2 * np.pi) <= np.pi:
+            """if sol.y[1][-1] % (2 * np.pi) <= np.pi:
                 theta = sol.y[1][-1] % np.pi
                 #phi = sol.y[2][-1] % (2 * np.pi)
                 phi = (np.pi - sol.y[2][-1]) % (2 * np.pi)
@@ -159,16 +207,93 @@ class System:
                 theta = (2 * np.pi - sol.y[1][-1]) % np.pi
                 #phi = (sol.y[2][-1] + np.pi) % (2 * np.pi)
                 phi = (-sol.y[2][-1]) % (2 * np.pi)
-                #phi = (sol.y[2][-1] + np.pi) % (2 * np.pi)
+                #phi = (sol.y[2][-1] + np.pi) % (2 * np.pi)"""
+            theta, phi = theta_phi_chiant(sol.y[:,-1])
+            for event in sol.y_events[0]:
+                try:
+                    print(event[0])
+                    print(event)
+                except:
+                    pass
+                if len(event) > 0 and r_min <= event[0] <= r_max:
+                    theta, phi = theta_phi_chiant(event)
+                    color = colorsys.hsv_to_rgb(phi / (2 * np.pi), 1, 1)
+                    return (int(255 * color[0]), int(255 * color[1]), int(255 * color[2]))
+            """if sol.y[0][-1] <= r_max:
+                color = colorsys.hsv_to_rgb(phi / (2 * np.pi), 1, 1)
+                return (int(255 * color[0]), int(255 * color[1]), int(255 * color[2]))"""
             if phi > np.pi:
                 phi = phi - 2 * np.pi
             I = np.floor((phi + np.pi) * self.background_size[0] / (2 * np.pi))
             J = np.floor(theta * self.background_size[1] / np.pi)
             try:
+                print(I, J)
                 return self.back_pixels[I, J]
             except:
                 print("FUCK", I, J)
             #tout est décallé parce que je suis trop con ptn de bordel de merde
+
+    def compute_angle(self, i, j):
+        n = np.array([1, self.L_x * (-1 + (2 * i + 1) / self.N_x), self.L_y * (-1 + (2 * j + 1) / self.N_y)])
+        n = n / np.linalg.norm(n)  # composante de la direction spatiale (au signe près) dans la base ON e_r,...
+        """theta = np.arctan2(np.sqrt(n[0] ** 2 + n[1] ** 2), -n[2])
+        phi = np.arctan2(n[1], n[0])
+        if phi > np.pi:
+            phi = phi - 2 * np.pi
+        I = np.floor((phi + np.pi) * self.background_size[0] / (2 * np.pi))
+        J = np.floor(theta * self.background_size[1] / np.pi)
+        return self.back_pixels[I, J]"""
+        G = g(self.x[0], self.x[1], self.a)
+        # Gamma = - np.sqrt(G[3]) * n[2] * (G[0] + 1) / (2 * G[4])
+        # Gamma = (- G[4] * n[2] + np.sqrt(G[4] ** 2 * n[2] ** 2 - G[0] * G[3])) / np.sqrt(G[3])
+        # p = np.array([1, Gamma * n[0], - Gamma * n[2], Gamma * n[1]])
+        p = np.array([1, n[0] / np.sqrt(G[1]), -n[2] / np.sqrt(G[2]), - (n[1] / np.sqrt(G[3]) - G[4] / G[3])])
+        p = flat(self.x[0], self.x[1], p, G)
+        p = - p / p[0]
+        b = p[3]
+        q = p[2] ** 2 + cot(self.x[1]) ** 2 * b ** 2 - self.a ** 2 * np.cos(self.x[1]) ** 2
+        # sol = sc.solve_ivp(f_kerr, [0, -10000], [self.x[0], self.x[1], self.x[2], p[1], p[2], self.a, b, q], rtol=1e-9, events=inside_event_horizon)
+        # sol = sc.solve_ivp(f_kerr, [0, -10000], [self.x[0], self.x[1], self.x[2], p[1], p[2], self.a, b, q], rtol=1e-12, atol=1e-9, events=on_the_ring)
+        sol = sc.solve_ivp(f_kerr, [0, -10000], [self.x[0], self.x[1], self.x[2], p[1], p[2], self.a, b, q],
+                           rtol=1e-9, events=on_the_plane)
+        # while not(r_min < sol.y[0][-1] < r_max) and sol.t[-1] > -10000:
+        # sol = sc.solve_ivp(f_kerr, [sol.t[-1], sol.t[-1] - 2], [sol.y[i][-1] for i in range(len(sol.y))], rtol=1e-9)
+        # sol = sc.solve_ivp(f_kerr, [sol.t[-1], -10000], [sol.y[i][-1] for i in range(len(sol.y))], rtol=1e-9, events=on_the_ring)
+        # print(sol.t)
+        # print(sol.y_events)
+        """fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        X = [ell_to_cart(sol.y[0][i], sol.y[1][i], sol.y[2][i], self.a) for i, y_i in enumerate(sol.y[0])]
+        x = [x_i[0] for x_i in X]
+        y = [x_i[1] for x_i in X]
+        z = [x_i[2] for x_i in X]
+        ax.set_xlim3d(-15, 15)
+        ax.set_ylim3d(-15, 15)
+        ax.set_zlim3d(-15, 15)
+        ax.plot(x, y, z)
+        o = np.linspace(0, 2 * np.pi, 100)
+        ax.plot(np.sqrt(r_min ** 2 + self.a ** 2) * np.cos(o), np.sqrt(r_min ** 2 + self.a ** 2) * np.sin(o), 0)
+        ax.plot(np.sqrt(r_max ** 2 + self.a ** 2) * np.cos(o), np.sqrt(r_max ** 2 + self.a ** 2) * np.sin(o), 0)
+        plt.show()"""
+        for event in sol.y_events[0]:
+            if len(event) > 0 and r_min <= event[0] <= r_max:
+                theta, phi = theta_phi_chiant(event)
+                color = colorsys.hsv_to_rgb(phi / (2 * np.pi), 1, 1)
+                return (int(255 * color[0]), int(255 * color[1]), int(255 * color[2]))
+        if r_max < sol.y[0][-1] <= 1000 or sol.y[0][-1] < r_min:
+            return (0, 0, 0)
+        else:
+            theta, phi = theta_phi_chiant(sol.y[:, -1])
+            if phi > np.pi:
+                phi = phi - 2 * np.pi
+            I = np.floor((phi + np.pi) * self.background_size[0] / (2 * np.pi))
+            J = np.floor(theta * self.background_size[1] / np.pi)
+            try:
+                #print(I, J)
+                return self.back_pixels[I, J]
+            except:
+                print("FUCK", I, J)
+            # tout est décallé parce que je suis trop con ptn de bordel de merde
 
 
 if __name__ == "__main__":
