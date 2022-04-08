@@ -10,4 +10,5 @@ We consider here Kerr black holes. The computations are made using adimentional 
 - OPTIMISATION
 - Improving the accretion disk. Creating a realistic[-ish] visual and raising the precision.
 - Adding the ability to chose the direction of the view and the velocity of the observer [in a user friendly way].
-- Taking into account the change in frequency between the observed and emmited light.
+- Taking into account the change in frequency between the observed and emitted light.
+- Adding a pdf explaining the maths... probably at the end. I don't want to write my awful notes in LaTeX right now.
