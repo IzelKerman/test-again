@@ -5,8 +5,8 @@ from mpl_toolkits.mplot3d import Axes3D
 from PIL import Image
 import colorsys
 
-r_min = 2
-r_max = 10
+r_min = 10
+r_max = 18
 
 def ell_to_cart(r, theta, phi, a=1):
     rho = np.sqrt(r ** 2 + a ** 2)
@@ -38,6 +38,12 @@ def inside_event_horizon(t, y):
 inside_event_horizon.terminal = True
 
 
+def inside_event_horizon_2(t, y, a):
+    r = y[0]
+    return r - 1 - np.sqrt(1 - a ** 2 * np.cos(y[1]) ** 2)
+inside_event_horizon_2.terminal = True
+
+
 def on_the_ring(t, y):
     r = y[0]
     a = y[5]
@@ -57,6 +63,14 @@ def on_the_plane(t, y):
     #return np.cos(theta)
     return (r - 1 - np.sqrt(1 - a ** 2 * np.cos(y[1]) ** 2)) * np.cos(theta)
 #on_the_plane.terminal = True
+
+
+def on_the_plane_2(t, y, a):
+    r = y[0]
+    theta = y[1]
+    #return np.cos(theta)
+    return np.cos(theta)
+#on_the_plane_2.terminal = True
 
 
 def g(r, theta, a):
@@ -124,6 +138,34 @@ def f_kerr(t, x):
         print(int(t) / 1000)"""
 
     return np.array([dr, dtheta, dphi, dp_r, dp_theta, 0, 0, 0])
+
+
+def f_kerr_2(t, x, a, b, q):
+    #x = r, theta, phi, p_r, p_theta, a, b, q
+    r, theta, phi, p_r, p_theta = x[0], x[1], x[2], x[3], x[4]
+    rho = np.sqrt(r ** 2 + (a * np.cos(theta)) ** 2)
+    Delta = r ** 2 - 2 * r + a ** 2
+    P = r ** 2 + a ** 2 - a * b
+    R = P ** 2 - Delta * ((b - a) ** 2 + q)
+    Theta = q - (b * cot(theta)) ** 2 + (a * np.cos(theta)) ** 2
+    drho_r = r / rho
+    drho_theta = - a ** 2 * np.cos(theta) * np.sin(theta) / rho
+    dDelta_r = 2 * (r - 1)
+    dR_r = 4 * r * P - ((b - a) ** 2 + q) * dDelta_r
+    dTheta_theta = 2 * cot(theta) * (1 + cot(theta) ** 2) * b ** 2 - 2 * np.cos(theta) * np.sin(theta) * a ** 2
+
+    dr = Delta * p_r / rho ** 2
+    dtheta = p_theta / rho ** 2
+    #dphi = (a * P / Delta + (b - a) + b * cot(theta) ** 2) / rho ** 2
+    #dphi = ((a - 2 * b) * P / Delta + b * (1 + cot(theta) ** 2) - a) / rho ** 2
+    dphi = (a * P / Delta + b * (1 + cot(theta) ** 2) - a) / rho ** 2
+    truc = Delta * p_r ** 2 + p_theta ** 2 - R / Delta - Theta
+    dp_r = (truc * drho_r / rho - (p_r ** 2 + R / Delta ** 2) * dDelta_r / 2 + dR_r / (2 * Delta)) / rho ** 2
+    dp_theta = (truc * drho_theta / rho + dTheta_theta / 2) / rho ** 2
+    """if 0 <= t % 100 <= 0.002:
+        print(int(t) / 1000)"""
+
+    return np.array([dr, dtheta, dphi, dp_r, dp_theta])
 
 
 def f_kerr_backward(t, x):
@@ -254,13 +296,16 @@ class System:
         q = p[2] ** 2 + cot(self.x[1]) ** 2 * b ** 2 - self.a ** 2 * np.cos(self.x[1]) ** 2
         # sol = sc.solve_ivp(f_kerr, [0, -10000], [self.x[0], self.x[1], self.x[2], p[1], p[2], self.a, b, q], rtol=1e-9, events=inside_event_horizon)
         # sol = sc.solve_ivp(f_kerr, [0, -10000], [self.x[0], self.x[1], self.x[2], p[1], p[2], self.a, b, q], rtol=1e-12, atol=1e-9, events=on_the_ring)
-        sol = sc.solve_ivp(f_kerr, [0, -10000], [self.x[0], self.x[1], self.x[2], p[1], p[2], self.a, b, q],
-                           rtol=1e-9, events=on_the_plane)
-        # while not(r_min < sol.y[0][-1] < r_max) and sol.t[-1] > -10000:
-        # sol = sc.solve_ivp(f_kerr, [sol.t[-1], sol.t[-1] - 2], [sol.y[i][-1] for i in range(len(sol.y))], rtol=1e-9)
-        # sol = sc.solve_ivp(f_kerr, [sol.t[-1], -10000], [sol.y[i][-1] for i in range(len(sol.y))], rtol=1e-9, events=on_the_ring)
-        # print(sol.t)
-        # print(sol.y_events)
+        # sol = sc.solve_ivp(f_kerr, [0, -10000], [self.x[0], self.x[1], self.x[2], p[1], p[2], self.a, b, q], rtol=1e-9, events=on_the_plane)
+        events = [lambda t, x: on_the_plane_2(t, x, self.a), lambda t, x: inside_event_horizon_2(t, x, self.a)]
+        #events = lambda t, x: on_the_plane_2(t, x, self.a)
+        sol = sc.solve_ivp(lambda t, x: f_kerr_2(t, x, self.a, b, q), [0, -10000], [self.x[0], self.x[1], self.x[2], p[1], p[2]], rtol=1e-9, events=events)
+        if sol.status == -1:
+            print(sol.t[-1], sol.y[:, -1])
+        """while not(r_min < sol.y[0][-1] < r_max) and sol.t[-1] > -10000:
+            print(sol.t)
+            print(sol.y[0, -1])
+            sol = sc.solve_ivp(lambda t, x: f_kerr_2(t, x, self.a, b, q), [sol.t[-1], -10000], sol.y[:,-1], rtol=1e-9, events=lambda t, x: on_the_plane_2(t, x, self.a))"""
         """fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         X = [ell_to_cart(sol.y[0][i], sol.y[1][i], sol.y[2][i], self.a) for i, y_i in enumerate(sol.y[0])]

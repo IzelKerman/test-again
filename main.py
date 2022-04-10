@@ -301,7 +301,7 @@ def update_image_2():
         rectangle_position, color = imp.next_rectangle()
         ImageDraw.Draw(im).rectangle(rectangle_position, color)"""
 
-syst = compute.System(0.99999, [30, np.pi / 2.5, 0], [np.pi / 4, np.pi / 4], [1080, 1080], "Images/Hello_there.png", "Images/eso0932a.tif")
+syst = compute.System(0.99999, [50, np.pi / 2.15, 0], [np.pi / 4, np.pi / 4], [1080, 1080], "Images/Hello_there.png", "Images/eso0932a.tif")
 syst.create_image("Images/Hello_there.png")
 
 window = tk.Tk()
